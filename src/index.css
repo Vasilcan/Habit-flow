@@ -1,9 +1,18 @@
 @import "tailwindcss";
 
+/* Îi spunem noului Tailwind că vrem să mapăm culoarea 'accent' direct pe variabila noastră CSS dinamică */
+@theme {
+  --color-accent: var(--accent-color);
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-textMain: var(--text-main);
+  --color-textMuted: var(--text-muted);
+}
+
 @layer base {
   :root {
     --accent-color: #3b82f6;
-    /* Blue by default */
+    /* Blue implicit */
     --bg-color: #f8fafc;
     --surface-color: #ffffff;
     --text-main: #0f172a;
