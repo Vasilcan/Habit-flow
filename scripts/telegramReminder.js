@@ -1,8 +1,7 @@
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import fetch from 'node-fetch';
+import https from 'https'; // Folosim modulul nativ Node.js, zero configurări, zero erori!
 
-// 1. Inițializăm Firebase Admin folosind variabilele de mediu (secrete) de pe GitHub
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -12,67 +11,73 @@ initializeApp({
 
 const db = getFirestore();
 
-// Utilitare pentru date (Timezone local)
 const getTodayDateString = () => {
     const now = new Date();
-    // Ajustăm pentru ora României (+3 în Mai 2026 datorită orei de vară)
     const localTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
     return localTime.toISOString().split('T')[0];
 };
 
-async function sendTelegramMessage(chatId, text) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text: text,
-                parse_mode: 'Markdown'
-            })
+function sendTelegramMessage(chatId, text) {
+    return new Promise((resolve, reject) => {
+        const data = JSON.stringify({
+            chat_id: chatId,
+            text: text,
+            parse_mode: 'Markdown'
         });
-        const resData = await response.json();
-        if (!resData.ok) console.error(`Eroare trimitere către ${chatId}:`, resData.description);
-    } catch (err) {
-        console.error("Eroare la cererea HTTP către Telegram:", err);
-    }
+
+        const options = {
+            hostname: 'api.telegram.org',
+            port: 443,
+            path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': data.length
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let responseBody = '';
+            res.on('data', (chunk) => { responseBody += chunk; });
+            res.on('end', () => { resolve(JSON.parse(responseBody)); });
+        });
+
+        req.on('error', (error) => { console.error(error); reject(error); });
+        req.write(data);
+        req.end();
+    });
 }
 
 async function runReminder() {
     const todayStr = getTodayDateString();
-    console.log(`Pornire reminder pentru data: ${todayStr}`);
+    console.log(`Pornire reminder pentru: ${todayStr}`);
 
     try {
-        // 2. Extragem utilizatorii care au notificările active
         const usersSnapshot = await db.collection('users').where('notificationsEnabled', '==', true).get();
 
         if (usersSnapshot.empty) {
-            console.log('Niciun utilizator cu notificări active.');
+            console.log('Niciun utilizator cu notificari active.');
             return;
         }
 
         for (const userDoc of usersSnapshot.docs) {
-            const userId = userDoc.id;
             const userData = userDoc.data();
             const chatId = userData.telegramChatId;
 
             if (!chatId) continue;
 
-            // 3. Verificăm obiceiurile nebifate azi
-            const habitsSnapshot = await db.collection('users').doc(userId).collection('habits').get();
+            const habitsSnapshot = await db.collection('users').doc(userDoc.id).collection('habits').get();
             let pendingHabits = [];
 
             habitsSnapshot.forEach(hDoc => {
                 const h = hDoc.data();
                 const history = h.history || [];
                 if (!history.includes(todayStr)) {
-                    pendingHabits.push(`${h.emoji || '✨'} *${h.name}* (${h.type === 'must' ? 'MUST' : 'COULD BE'})`);
+                    pendingHabits.push(`✨ *${h.name}*`);
                 }
             });
 
-            // 4. Verificăm task-urile neterminate azi
-            const tasksSnapshot = await db.collection('users').doc(userId).collection('dailyPlans').doc(todayStr).collection('tasks').get();
+            const tasksSnapshot = await db.collection('users').doc(userDoc.id).collection('dailyPlans').doc(todayStr).collection('tasks').get();
             let pendingTasks = [];
 
             tasksSnapshot.forEach(tDoc => {
@@ -82,31 +87,22 @@ async function runReminder() {
                 }
             });
 
-            // 5. Construirea mesajului personalizat
             let message = `👋 *Salutare de la HabitFlow!*\n\n`;
 
             if (pendingHabits.length === 0 && pendingTasks.length === 0) {
-                message += `🎉 *Incredibil!* Ai bifat absolut toate obiceiurile și task-urile planificate pentru azi. Ești un campion! Continuă tot așa! 🏆💪`;
+                message += `🎉 *Incredibil!* Ai bifat absolut tot pe azi. Esti un campion! 🏆`;
             } else {
-                message += `Iată ce ți-a mai rămas de finalizat pe ziua de azi:\n\n`;
-
-                if (pendingHabits.length > 0) {
-                    message += `*🏆 Obiceiuri rămase:*\n${pendingHabits.join('\n')}\n\n`;
-                }
-
-                if (pendingTasks.length > 0) {
-                    message += `*📅 Task-uri din plan neterminate:*\n${pendingTasks.join('\n')}\n\n`;
-                }
-
-                message += `🚀 *Nu renunța!* Încă mai ai timp să le bifezi pe toate înainte de culcare. Succes!`;
+                message += `Iata ce ti-a mai ramas de finalizat pe azi:\n\n`;
+                if (pendingHabits.length > 0) message += `*🏆 Obiceiuri rămase:*\n${pendingHabits.join('\n')}\n\n`;
+                if (pendingTasks.length > 0) message += `*📅 Task-uri rămase:*\n${pendingTasks.join('\n')}\n\n`;
+                message += `🚀 Nu renunta!`;
             }
 
-            // Tritem mesajul live pe Telegram!
             await sendTelegramMessage(chatId, message);
-            console.log(`Mesaj trimis cu succes către user: ${userData.email}`);
+            console.log(`Mesaj trimis catre: ${userData.email}`);
         }
     } catch (error) {
-        console.error("Eroare în rularea scriptului:", error);
+        console.error("Eroare:", error);
     }
 }
 
