@@ -1,0 +1,30 @@
+name: Daily Telegram Reminder Scheduler
+
+on:
+  schedule:
+    # Rulează în fiecare zi la 17:00 UTC (care înseamnă fix ora 19:00 a României)
+    - cron: '0 17 * * *'
+  workflow_dispatch: # Permite declanșarea manuală a scriptului de test direct din GitHub
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository code
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Install dependencies
+      run: |
+        npm install firebase-admin node-fetch
+
+    - name: Execute Reminder Script
+      env:
+        FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      run: node scripts/telegramReminder.js
