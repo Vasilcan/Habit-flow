@@ -6,7 +6,7 @@ import { Plus, Flame, CheckCircle, Circle } from 'lucide-react';
 import AddHabitModal from '../components/AddHabitModal';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { collection, addDoc, query, onSnapshot, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 export default function Habits() {
@@ -154,6 +154,19 @@ export default function Habits() {
         }
     };
 
+    const handleDeleteHabit = async (habitId) => {
+        if (window.confirm("Ești sigur că vrei să ștergi acest obicei?")) {
+            try {
+                const habitDocRef = doc(db, 'users', currentUser.uid, 'habits', habitId);
+                await deleteDoc(habitDocRef);
+                toast.success('Obicei șters cu succes.');
+            } catch (error) {
+                console.error("Eroare la ștergerea obiceiului:", error);
+                toast.error("Nu s-a putut șterge obiceiul.");
+            }
+        }
+    };
+
     return (
         <div className="relative min-h-full">
             <div className="flex justify-between items-center mb-8">
@@ -222,10 +235,19 @@ export default function Habits() {
                                 </div>
                             </div>
 
-                            {/* Afișarea Streak-ului curent cu flacără */}
-                            <div className={`flex items-center space-x-1 font-bold ${habit.currentStreak > 0 ? 'text-orange-500' : 'text-textMuted'}`}>
-                                <Flame size={20} className={habit.currentStreak > 0 ? 'fill-orange-500/20 animate-pulse' : ''} />
-                                <span>{habit.currentStreak}</span>
+                            {/* Afișarea Streak-ului curent cu flacără și Buton de Ștergere */}
+                            <div className="flex items-center space-x-3">
+                                <div className={`flex items-center space-x-1 font-bold ${habit.currentStreak > 0 ? 'text-orange-500' : 'text-textMuted'}`}>
+                                    <Flame size={20} className={habit.currentStreak > 0 ? 'fill-orange-500/20 animate-pulse' : ''} />
+                                    <span>{habit.currentStreak}</span>
+                                </div>
+                                <button
+                                    onClick={() => handleDeleteHabit(habit.id)}
+                                    className="text-gray-500 hover:text-red-400 transition-colors px-2 cursor-pointer"
+                                    title="Șterge obicei"
+                                >
+                                    🗑️
+                                </button>
                             </div>
                         </div>
                     ))}
