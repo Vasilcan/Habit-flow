@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, CalendarDays, Settings, LogOut } from 'lucide-react';
+import { Trophy, CalendarDays, Settings, LogOut, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 
@@ -12,6 +12,7 @@ export default function Layout({ children }) {
     const navItems = [
         { path: '/', name: 'Habits', icon: Trophy },
         { path: '/plan', name: 'Plan Zi', icon: CalendarDays },
+        { path: '/goals', name: 'Obiective', icon: Target },
         { path: '/settings', name: 'Setări', icon: Settings },
     ];
 

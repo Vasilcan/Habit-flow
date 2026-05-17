@@ -1,3 +1,4 @@
+import Goals from './pages/Goals';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -60,6 +61,17 @@ function App() {
               </Layout>
             </PrivateRoute>
           }
+        />
+        {/* RUTĂ NOUĂ PENTRU OBIECTIVE */}
+        <Route 
+          path="/goals" 
+          element={
+            <PrivateRoute>
+              <Layout>
+                <Goals />
+              </Layout>
+            </PrivateRoute>
+          } 
         />
       </Routes>
     </Router>

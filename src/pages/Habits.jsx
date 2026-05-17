@@ -1,3 +1,6 @@
+import photoMust from '../assets/my_photo.jpg.jpeg';
+import photoCouldBe from '../assets/my_photo2.jpg.jpeg';
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Flame, CheckCircle, Circle } from 'lucide-react';
 import AddHabitModal from '../components/AddHabitModal';
@@ -10,6 +13,7 @@ export default function Habits() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [habits, setHabits] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [zoomedImage, setZoomedImage] = useState(null);
     const { currentUser } = useAuth();
 
     // Obținem data de azi în format text (ex: "2026-05-16") pentru a o folosi la verificări
@@ -172,40 +176,56 @@ export default function Habits() {
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {habits.map((h) => (
+                    {habits.map((habit) => (
                         <div
-                            key={h.id}
-                            className={`p-4 bg-surface rounded-2xl border transition-all flex items-center justify-between shadow-sm ${h.isCompletedToday ? 'border-accent/30 bg-accent/5 opacity-80' : 'border-gray-100 dark:border-gray-800'}`}
+                            key={habit.id}
+                            className={`p-4 bg-surface rounded-2xl border transition-all flex items-center justify-between shadow-sm ${habit.isCompletedToday ? 'border-accent/30 bg-accent/5 opacity-80' : 'border-gray-100 dark:border-gray-800'}`}
                         >
                             <div className="flex items-center space-x-4">
                                 {/* Iconița de bifă */}
                                 <button
-                                    onClick={() => toggleHabitComplete(h)}
+                                    onClick={() => toggleHabitComplete(habit)}
                                     className="text-textMuted hover:text-accent transition-colors cursor-pointer"
                                 >
-                                    {h.isCompletedToday ? (
+                                    {habit.isCompletedToday ? (
                                         <CheckCircle size={28} className="text-accent fill-accent/10" />
                                     ) : (
                                         <Circle size={28} />
                                     )}
                                 </button>
 
-                                <span className="text-2xl">{h.emoji}</span>
+                                <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-slate-700 shadow-md cursor-pointer hover:scale-105 transition-transform shrink-0" onClick={() => setZoomedImage(habit.frequency === 'MUST' || habit.type === 'MUST' || habit.frequency === 'must' || habit.type === 'must' ? photoMust : photoCouldBe)}>
+                                  <img 
+                                    src={habit.frequency === 'MUST' || habit.type === 'MUST' || habit.frequency === 'must' || habit.type === 'must' ? photoMust : photoCouldBe} 
+                                    alt="Habit Icon" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
                                 <div>
-                                    <h3 className={`font-bold text-textMain ${h.isCompletedToday ? 'line-through text-textMuted' : ''}`}>{h.name}</h3>
+                                    <h3 className={`font-bold text-textMain ${habit.isCompletedToday ? 'line-through text-textMuted' : ''}`}>{habit.name}</h3>
                                     <div className="flex items-center space-x-2 mt-1">
-                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${h.type === 'must' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
-                                            {h.type === 'must' ? '🔥 Must' : '🌱 Could Be'}
-                                        </span>
-                                        <span className="text-xs text-textMuted">Record: {h.bestStreak || 0} zile</span>
+                                        <div className="flex items-center gap-2">
+                                          {habit.frequency === 'MUST' || habit.type === 'MUST' || habit.frequency === 'must' || habit.type === 'must' ? (
+                                            <div className="flex items-center gap-1.5 bg-red-950/40 text-red-400 px-2.5 py-1 rounded-md border border-red-900/50 text-xs font-bold">
+                                              <img src={photoMust} alt="Must" className="w-4 h-4 rounded-full object-cover" />
+                                              <span>MUST</span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-1.5 bg-emerald-950/40 text-emerald-400 px-2.5 py-1 rounded-md border border-emerald-900/50 text-xs font-bold">
+                                              <img src={photoCouldBe} alt="Could Be" className="w-4 h-4 rounded-full object-cover" />
+                                              <span>COULD BE</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className="text-xs text-textMuted">Record: {habit.bestStreak || 0} zile</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Afișarea Streak-ului curent cu flacără */}
-                            <div className={`flex items-center space-x-1 font-bold ${h.currentStreak > 0 ? 'text-orange-500' : 'text-textMuted'}`}>
-                                <Flame size={20} className={h.currentStreak > 0 ? 'fill-orange-500/20 animate-pulse' : ''} />
-                                <span>{h.currentStreak}</span>
+                            <div className={`flex items-center space-x-1 font-bold ${habit.currentStreak > 0 ? 'text-orange-500' : 'text-textMuted'}`}>
+                                <Flame size={20} className={habit.currentStreak > 0 ? 'fill-orange-500/20 animate-pulse' : ''} />
+                                <span>{habit.currentStreak}</span>
                             </div>
                         </div>
                     ))}
@@ -217,6 +237,15 @@ export default function Habits() {
                 onClose={() => setIsModalOpen(false)}
                 onAddHabit={handleAddHabit}
             />
+
+            {zoomedImage && (
+              <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center cursor-pointer" onClick={() => setZoomedImage(null)}>
+                <div className="relative max-w-md max-h-[80vh] p-2 bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                  <img src={zoomedImage} alt="Zoomed View" className="rounded-xl max-w-full max-h-[75vh] object-contain" />
+                  <button className="absolute top-4 right-4 bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm hover:bg-black/80" onClick={() => setZoomedImage(null)}>✕</button>
+                </div>
+              </div>
+            )}
         </div>
     );
 }
